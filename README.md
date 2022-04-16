@@ -1,6 +1,7 @@
 # EdvoraTask
 1. Create a Kubernetes cluster with 2 node pools; 2 nodes each.
 2. Install cert-manager, ingress-nginx and configure them.
+3. Setup a Terraform script to deploy the container in a separate namespace:
 
 **Note: I am setting up this lab on Azure cloud.**
 ## 1. Create a Kubernetes cluster with 2 node pools; 2 nodes each.
@@ -188,7 +189,7 @@ helm install \
   --set installCRDs=true
 ```
 
-## Ingress-nginx on Kubenetes cluster
+### Ingress-nginx on Kubenetes cluster
 
 - Clone the Ingress Controller repo:
 ```
@@ -204,7 +205,7 @@ helm repo add nginx-stable https://helm.nginx.com/stable
 helm repo update
 ```
 
-Installing via Helm Repository
+- Installing via Helm Repository
 ```
 helm install my-release nginx-stable/nginx-ingress
 ```
@@ -227,3 +228,36 @@ helm upgrade my-release .
 ```
 helm upgrade my-release nginx-stable/nginx-ingress
 ```
+## Setup a Terraform script to deploy the container in a separate namespace
+
+- Configure Our Kubernetes Provider.
+```
+provider "kubernetes" {
+   host = "https://0.0.0.0"
+}
+```
+
+- Deploy The Pod.
+```
+
+resource "kubernetes_pod" "example" {
+  metadata {
+    name = "example-test"
+    labels {
+      App = "example"
+    }
+  }
+
+  spec {
+    container {
+      image = "vad1mo/hello-world-rest"
+      name  = "helloworld"
+
+      port {
+        container_port = 80
+      }
+    }
+  }
+}
+```
+
