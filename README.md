@@ -157,3 +157,73 @@ az aks scale \
 watch -n 2 kubectl get nodes
 
 ```
+
+## 2. Install cert-manager, ingress-nginx and configure them
+
+### Install Cert-Manager on Kubernetes
+
+- Add Helm repo
+```bash
+helm repo add jetstack https://charts.jetstack.io
+```
+
+- Update Helm
+```bash
+helm repo update
+```
+
+- Search for latest verion
+```bash
+helm search repo cert-manager
+```
+
+- Install Helm chart
+```bash
+helm install \
+  cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --version v1.6.0 \
+  --set prometheus.enabled=false \
+  --set installCRDs=true
+```
+
+## Ingress-nginx on Kubenetes cluster
+
+- Clone the Ingress Controller repo:
+```
+git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v2.2.0
+```
+- Change your working directory to /deployments/helm-chart:
+```
+cd kubernetes-ingress/deployments/helm-chart
+```
+- Adding the Helm Repository
+```
+helm repo add nginx-stable https://helm.nginx.com/stable
+helm repo update
+```
+
+Installing via Helm Repository
+```
+helm install my-release nginx-stable/nginx-ingress
+```
+- Installing Using Chart Sources
+```
+helm install my-release .
+```
+- Upgrading the Chart
+```
+kubectl apply -f crds/
+```
+**Note:** The following warning is expected and can be ignored: Warning: ``kubectl apply should be used on resource created by either kubectl create --save-config or kubectl apply``.
+
+
+- Upgrade Using Chart Sources:
+```
+helm upgrade my-release .
+```
+- Upgrade via Helm Repository:
+```
+helm upgrade my-release nginx-stable/nginx-ingress
+```
