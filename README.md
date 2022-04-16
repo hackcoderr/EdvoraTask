@@ -3,6 +3,7 @@
 2. Install cert-manager, ingress-nginx and configure them.
 3. Setup a Terraform script to deploy the container in a separate namespace.
 4. Configure the deployment to autoscale at 60% memory usage and 70% CPU usage.
+5. Create a PVC for the deployment with 10GB space and attach.
 
 **Note: I am setting up this lab on Azure cloud.**
 ## 1. Create a Kubernetes cluster with 2 node pools; 2 nodes each.
@@ -229,7 +230,7 @@ helm upgrade my-release .
 ```
 helm upgrade my-release nginx-stable/nginx-ingress
 ```
-## Setup a Terraform script to deploy the container in a separate namespace
+## 3. Setup a Terraform script to deploy the container in a separate namespace
 
 - Install [terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli) on your K8S cluster.
 
@@ -301,7 +302,7 @@ resource "kubernetes_deployment" "terradeploy" {
 ```
 - Run ``terraform apply --auto-approve`` to deployment.
 
-## Configure the deployment to autoscale at 70% CPU usage.
+## 4. Configure the deployment to autoscale at 70% CPU usage.
 - Create autoscaling
 ```
 apiVersion: autoscaling/v1
@@ -320,5 +321,99 @@ spec:
 ```
 - Now run ``kubectl apply -f edvora/autoscale/autoscale.yaml``.
 
+## 5. Create a PVC for the deployment with 10GB space and attach
 
+- Create an index.html file on your Node.
+```
+sudo mkdir /mnt/data
+sudo sh -c "echo 'Hello from Kubernetes storage' > /mnt/data/index.html"
+```
+- Create a PersistentVolume
+```
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: task-pv-volume
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
+```
+run the below command.
+```
+kubectl apply -f edvora/pvc/pv-volume.yaml
+```
+View information about the PersistentVolume:
+```
+kubectl get pv task-pv-volume
+```
+- Create a PersistentVolumeClaim
+```
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: task-pv-claim
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+```
+Run the below command to create PVC.
+```
+kubectl apply -f edvora/pvc/pv-claim.yaml
+```
+Look at the PersistentVolumeClaim:
+```
+kubectl get pvc task-pv-claim
+```
+- Create a Pod
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: task-pv-pod
+spec:
+  volumes:
+    - name: task-pv-storage
+      persistentVolumeClaim:
+        claimName: task-pv-claim
+  containers:
+    - name: task-pv-container
+      image: nginx
+      ports:
+        - containerPort: 80
+          name: "http-server"
+      volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: task-pv-storage
+```
+Run the below commad to create pod.
+```
+kubectl apply -f edvora/pvc/pv-pod.yaml
+```
+Verify that the container in the Pod is running;
+```
+kubectl get pod task-pv-pod
+```
+Get a shell to the container running in your Pod:
+```
+kubectl exec -it task-pv-pod -- /bin/bash
+```
+In your shell, verify that nginx is serving the index.html file from the hostPath volume:
 
+- Be sure to run these 3 commands inside the root shell that comes from
+- running "kubectl exec" in the previous step
+```
+apt update
+apt install curl
+curl http://localhost/
+```
