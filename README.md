@@ -1,7 +1,8 @@
 # EdvoraTask
 1. Create a Kubernetes cluster with 2 node pools; 2 nodes each.
 2. Install cert-manager, ingress-nginx and configure them.
-3. Setup a Terraform script to deploy the container in a separate namespace:
+3. Setup a Terraform script to deploy the container in a separate namespace.
+4. Configure the deployment to autoscale at 60% memory usage and 70% CPU usage.
 
 **Note: I am setting up this lab on Azure cloud.**
 ## 1. Create a Kubernetes cluster with 2 node pools; 2 nodes each.
@@ -253,7 +254,8 @@ resource "kubernetes_namespace" "example" {
 ```
 resource "kubernetes_deployment" "example" {
   metadata {
-    name = "terraform-deployment"
+    name = kubernetes_namespace.ns.metadata.0.name
+    namespace = "terraform-namespace"
     labels = {
       test = "terraApp"
     }
@@ -278,6 +280,16 @@ resource "kubernetes_deployment" "example" {
         container {
           image = "vad1mo/hello-world-rest"
           name  = "terra-hello"
+        resources {
+            limits = {
+              cpu    = "0.5"
+              memory = "512Mi"
+            }
+            requests = {
+              cpu    = "250m"
+              memory = "50Mi"
+            }
+          }
 
         }
       }
@@ -286,4 +298,8 @@ resource "kubernetes_deployment" "example" {
 }
 ```
 - Run ``terraform apply --auto-approve`` to deploy pod.
+
+## Configure the deployment to autoscale at 60% memory usage and 70% CPU usage.
+
+
 
