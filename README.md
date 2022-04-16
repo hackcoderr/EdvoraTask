@@ -230,34 +230,60 @@ helm upgrade my-release nginx-stable/nginx-ingress
 ```
 ## Setup a Terraform script to deploy the container in a separate namespace
 
+- Install [terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli) on your K8S cluster.
+
 - Configure Our Kubernetes Provider.
 ```
 provider "kubernetes" {
-   host = "https://0.0.0.0"
+  config_path    = "~/.kube/config"
+}
+```
+- Now run ``terraform init`` for download the required plugins.
+
+- Create namespace on k8s cluster.
+```
+resource "kubernetes_namespace" "example" {
+  metadata {
+    name = "terrafrom-namespace"
+  }
 }
 ```
 
 - Deploy The Pod.
 ```
-
-resource "kubernetes_pod" "example" {
+resource "kubernetes_deployment" "example" {
   metadata {
-    name = "example-test"
-    labels {
-      App = "example"
+    name = "terraform-deployment"
+    labels = {
+      test = "terraApp"
     }
   }
 
   spec {
-    container {
-      image = "vad1mo/hello-world-rest"
-      name  = "helloworld"
+    replicas = 1
+    selector {
+      match_labels = {
+        test = "terraApp"
+      }
+    }
 
-      port {
-        container_port = 80
+    template {
+      metadata {
+        labels = {
+          test = "terraApp"
+        }
+      }
+
+      spec {
+        container {
+          image = "vad1mo/hello-world-rest"
+          name  = "terra-hello"
+
+        }
       }
     }
   }
 }
 ```
+- Run ``terraform apply --auto-approve`` to deploy pod.
 
