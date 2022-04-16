@@ -243,19 +243,20 @@ provider "kubernetes" {
 
 - Create namespace on k8s cluster.
 ```
-resource "kubernetes_namespace" "example" {
+resource "kubernetes_namespace" "ns" {
   metadata {
     name = "terrafrom-namespace"
   }
 }
 ```
 
-- Deploy The Pod.
+- Create deployment
 ```
-resource "kubernetes_deployment" "example" {
+
+resource "kubernetes_deployment" "terradeploy" {
   metadata {
-    name = kubernetes_namespace.ns.metadata.0.name
-    namespace = "terraform-namespace"
+    name = "terraform-deployment"
+    namespace = kubernetes_namespace.ns.metadata.0.name
     labels = {
       test = "terraApp"
     }
@@ -296,10 +297,28 @@ resource "kubernetes_deployment" "example" {
     }
   }
 }
-```
-- Run ``terraform apply --auto-approve`` to deploy pod.
 
-## Configure the deployment to autoscale at 60% memory usage and 70% CPU usage.
+```
+- Run ``terraform apply --auto-approve`` to deployment.
+
+## Configure the deployment to autoscale at 70% CPU usage.
+- Create autoscaling
+```
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hello-scale
+  namespace: terraform-namespace
+spec:
+  maxReplicas: 10
+  minReplicas: 1
+  scaleTargetRef:
+    apiVersion: extensions/v1beta1
+    kind: Deployment
+    name: terraform-deployment
+  targetCPUUtilizationPercentage: 70
+```
+- Now run ``kubectl apply -f edvora/autoscale/autoscale.yaml``.
 
 
 
